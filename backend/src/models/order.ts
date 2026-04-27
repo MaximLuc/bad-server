@@ -4,6 +4,7 @@ import validator from 'validator'
 import { PaymentType, phoneRegExp } from '../middlewares/validations'
 import Counter from './counter'
 import User from './user'
+import { sanitizeOrderComment } from '../utils/sanitizeHtml'
 
 export enum StatusType {
     Cancelled = 'cancelled',
@@ -67,6 +68,8 @@ const orderSchema: Schema = new Schema(
         comment: {
             type: String,
             default: '',
+            maxlength: 1000,
+            set: sanitizeOrderComment,
         },
     },
     { versionKey: false, timestamps: true }

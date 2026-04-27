@@ -12,6 +12,21 @@ type EditorInputProps = {
     onChange: (value: string) => void
 }
 
+  function getSafeUrl(url: string | null) {
+      if (!url) {
+          return undefined
+      }
+
+      try {
+          const parsedUrl = new URL(url, window.location.origin)
+          const allowedProtocols = ['http:', 'https:', 'mailto:']
+
+          return allowedProtocols.includes(parsedUrl.protocol) ? url : undefined
+      } catch {
+          return undefined
+      }
+  }
+
 export default function EditorInput({ onChange, value }: EditorInputProps) {
     function handleChangeElement(e: ContentEditableEvent) {
         onChange(e.target.value)
@@ -25,11 +40,10 @@ export default function EditorInput({ onChange, value }: EditorInputProps) {
                 document.execCommand('unlink')
             } else {
                 // eslint-disable-next-line no-alert
-                document.execCommand(
-                    'createLink',
-                    false,
-                    prompt('URL', '') || undefined
-                )
+                const safeUrl = getSafeUrl(prompt('URL', ''))
+                if (safeUrl) {
+                    document.execCommand('createLink', false, safeUrl)
+                }
             }
         }
     )
