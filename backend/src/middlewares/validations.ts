@@ -1,16 +1,61 @@
-import { Joi, celebrate } from 'celebrate'
+import { RequestHandler } from 'express'
+import Joi from 'joi'
 import { Types } from 'mongoose'
+import BadRequestError from '../errors/bad-request-error'
 
 // eslint-disable-next-line no-useless-escape
-export const phoneRegExp = /^(\+\d+)?(?:\s|-?|\(?\d+\)?)+$/
+export const phoneRegExp = /^\+?\d(?:[\d\s()-]*\d)?$/
 
 export enum PaymentType {
     Card = 'card',
     Online = 'online',
 }
 
+const imageFileNameRegExp = /^\/?[a-z0-9_-]+\/[a-f0-9-]+\.(png|jpe?g|gif|svg)$/i
+
+type RequestSchema = {
+    body?: Joi.ObjectSchema
+    params?: Joi.ObjectSchema
+}
+
+const validateRequest =
+    (schema: RequestSchema): RequestHandler =>
+    (req, _res, next) => {
+        const messages: string[] = []
+
+        if (schema.body) {
+            const { error, value } = schema.body.validate(req.body, {
+                abortEarly: false,
+            })
+
+            if (error) {
+                messages.push(...error.details.map((detail) => detail.message))
+            } else {
+                req.body = value
+            }
+        }
+
+        if (schema.params) {
+            const { error, value } = schema.params.validate(req.params, {
+                abortEarly: false,
+            })
+
+            if (error) {
+                messages.push(...error.details.map((detail) => detail.message))
+            } else {
+                Object.assign(req.params, value)
+            }
+        }
+
+        if (messages.length > 0) {
+            return next(new BadRequestError(messages.join(', ')))
+        }
+
+        return next()
+    }
+
 // валидация id
-export const validateOrderBody = celebrate({
+export const validateOrderBody = validateRequest({
     body: Joi.object().keys({
         items: Joi.array()
             .items(
@@ -53,7 +98,7 @@ export const validateOrderBody = celebrate({
 
 // валидация товара.
 // name и link - обязательные поля, name - от 2 до 30 символов, link - валидный url
-export const validateProductBody = celebrate({
+export const validateProductBody = validateRequest({
     body: Joi.object().keys({
         title: Joi.string().required().min(2).max(30).messages({
             'string.min': 'Минимальная длина поля "name" - 2',
@@ -61,7 +106,10 @@ export const validateProductBody = celebrate({
             'string.empty': 'Поле "title" должно быть заполнено',
         }),
         image: Joi.object().keys({
-            fileName: Joi.string().max(255).required(),
+            fileName: Joi.string()
+                .max(255)
+                .pattern(imageFileNameRegExp)
+                .required(),
             originalName: Joi.string().max(255).required(),
         }),
         category: Joi.string().max(50).required().messages({
@@ -74,14 +122,17 @@ export const validateProductBody = celebrate({
     }),
 })
 
-export const validateProductUpdateBody = celebrate({
+export const validateProductUpdateBody = validateRequest({
     body: Joi.object().keys({
         title: Joi.string().min(2).max(30).messages({
             'string.min': 'Минимальная длина поля "name" - 2',
             'string.max': 'Максимальная длина поля "name" - 30',
         }),
         image: Joi.object().keys({
-            fileName: Joi.string().max(255).required(),
+            fileName: Joi.string()
+                .max(255)
+                .pattern(imageFileNameRegExp)
+                .required(),
             originalName: Joi.string().max(255).required(),
         }),
         category: Joi.string().max(50),
@@ -90,7 +141,7 @@ export const validateProductUpdateBody = celebrate({
     }),
 })
 
-export const validateObjId = celebrate({
+export const validateObjId = validateRequest({
     params: Joi.object().keys({
         productId: Joi.string()
             .required()
@@ -103,7 +154,7 @@ export const validateObjId = celebrate({
     }),
 })
 
-export const validateUserBody = celebrate({
+export const validateUserBody = validateRequest({
     body: Joi.object().keys({
         name: Joi.string().min(2).max(30).messages({
             'string.min': 'Минимальная длина поля "name" - 2',
@@ -123,7 +174,7 @@ export const validateUserBody = celebrate({
     }),
 })
 
-export const validateAuthentication = celebrate({
+export const validateAuthentication = validateRequest({
     body: Joi.object().keys({
         email: Joi.string()
             .required()
