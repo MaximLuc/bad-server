@@ -33,7 +33,7 @@ const rateLimitOptions = {
 const apiLimiter = rateLimit({
     ...rateLimitOptions,
     windowMs: 15 * 60 * 1000,
-    limit: 300,
+    limit: 50,
 })
 
 const authLimiter = rateLimit({

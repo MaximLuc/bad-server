@@ -1,5 +1,3 @@
-const MAX_LIMIT = 50
-
 export default function getPagination(
     pageRaw: unknown,
     limitRaw: unknown,
@@ -7,7 +5,7 @@ export default function getPagination(
 ) {
     const page = Math.max(1, Number(pageRaw) || 1)
     const limit = Math.min(
-        MAX_LIMIT,
+        defaultLimit,
         Math.max(1, Number(limitRaw) || defaultLimit)
     )
 

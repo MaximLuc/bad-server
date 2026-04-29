@@ -8,6 +8,7 @@ import User from '../models/user'
 import escapeRegExp from '../utils/escapeRegExp'
 import getPagination from '../utils/pagination'
 import { sanitizeOrderComment } from '../utils/sanitizeHtml'
+import validateQuery from '../utils/validateQuery'
 
 const allowedOrderSortFields = [
     'createdAt',
@@ -25,6 +26,19 @@ export const getOrders = async (
     next: NextFunction
 ) => {
     try {
+        validateQuery(req.query, [
+            'page',
+            'limit',
+            'sortField',
+            'sortOrder',
+            'status',
+            'totalAmountFrom',
+            'totalAmountTo',
+            'orderDateFrom',
+            'orderDateTo',
+            'search',
+        ])
+
         const {
             page = 1,
             limit = 10,

@@ -5,6 +5,7 @@ import Order from '../models/order'
 import User, { IUser } from '../models/user'
 import escapeRegExp from '../utils/escapeRegExp'
 import getPagination from '../utils/pagination'
+import validateQuery from '../utils/validateQuery'
 
 const allowedCustomerSortFields = [
     'createdAt',
@@ -22,6 +23,22 @@ export const getCustomers = async (
     next: NextFunction
 ) => {
     try {
+        validateQuery(req.query, [
+            'page',
+            'limit',
+            'sortField',
+            'sortOrder',
+            'registrationDateFrom',
+            'registrationDateTo',
+            'lastOrderDateFrom',
+            'lastOrderDateTo',
+            'totalAmountFrom',
+            'totalAmountTo',
+            'orderCountFrom',
+            'orderCountTo',
+            'search',
+        ])
+
         const {
             page = 1,
             limit = 10,
