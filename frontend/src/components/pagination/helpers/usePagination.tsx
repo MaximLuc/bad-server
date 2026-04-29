@@ -1,10 +1,17 @@
 import { AsyncThunk } from '@reduxjs/toolkit'
 import { useDispatch, useSelector } from '@store/hooks'
-import { RootState } from '@store/store'
-import { useEffect, useState } from 'react'
+import { AppDispatch, RootState } from '@store/store'
+import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { WebLarekAPI } from '../../../utils/weblarek-api'
 
-interface PaginationResult<_, U> {
+interface PaginationPayload {
+    pagination: {
+        totalPages: number
+    }
+}
+
+interface PaginationResult<U> {
     data: U[]
     totalPages: number
     currentPage: number
@@ -15,11 +22,19 @@ interface PaginationResult<_, U> {
     setLimit: (limit: number) => void
 }
 
-const usePagination = <T, U>(
-    asyncAction: AsyncThunk<T, Record<string, unknown>, any>,
+const usePagination = <T extends PaginationPayload, U>(
+    asyncAction: AsyncThunk<
+        T,
+        Record<string, unknown>,
+        {
+            dispatch: AppDispatch
+            extra: WebLarekAPI
+            state: RootState
+        }
+    >,
     selector: (state: RootState) => U[],
     defaultLimit: number
-): PaginationResult<T, U> => {
+): PaginationResult<U> => {
     const dispatch = useDispatch()
     const data = useSelector(selector)
     const [searchParams, setSearchParams] = useSearchParams()
@@ -32,32 +47,28 @@ const usePagination = <T, U>(
 
     const limit = Number(searchParams.get('limit')) || defaultLimit
 
-    const fetchData = async (params: Record<string, any>) => {
-        const response: any = await dispatch(asyncAction(params))
-        setTotalPages(response.payload.pagination.totalPages)
-    }
+    const fetchData = useCallback(
+        async (params: Record<string, unknown>) => {
+            const response = await dispatch(asyncAction(params)).unwrap()
+            setTotalPages(response.pagination.totalPages)
+        },
+        [asyncAction, dispatch]
+    )
 
-    useEffect(() => {
-        const params = Object.fromEntries(searchParams.entries())
-        fetchData({ ...params, page: currentPage, limit }).then(() => {
-            if (data.length === 0 && currentPage > 1) {
-                setPage(1)
-            }
-        })
-    }, [currentPage, limit, searchParams])
-
-    const updateURL = (newParams: Record<string, any>) => {
-        3
-        const updatedParams = new URLSearchParams(searchParams)
-        Object.entries(newParams).forEach(([key, value]) => {
-            if (value !== undefined) {
-                updatedParams.set(key, value.toString())
-            } else {
-                updatedParams.delete(key)
-            }
-        })
-        setSearchParams(updatedParams)
-    }
+    const updateURL = useCallback(
+        (newParams: Record<string, string | number | undefined>) => {
+            const updatedParams = new URLSearchParams(searchParams)
+            Object.entries(newParams).forEach(([key, value]) => {
+                if (value !== undefined) {
+                    updatedParams.set(key, value.toString())
+                } else {
+                    updatedParams.delete(key)
+                }
+            })
+            setSearchParams(updatedParams)
+        },
+        [searchParams, setSearchParams]
+    )
 
     const nextPage = () => {
         if (currentPage < totalPages) {
@@ -71,10 +82,22 @@ const usePagination = <T, U>(
         }
     }
 
-    const setPage = (page: number) => {
+    const setPage = useCallback(
+        (page: number) => {
         const newPage = Math.max(1, Math.min(page, totalPages))
         updateURL({ page: newPage, limit })
-    }
+        },
+        [limit, totalPages, updateURL]
+    )
+
+    useEffect(() => {
+        const params = Object.fromEntries(searchParams.entries())
+        fetchData({ ...params, page: currentPage, limit }).then(() => {
+            if (data.length === 0 && currentPage > 1) {
+                setPage(1)
+            }
+        })
+    }, [currentPage, data.length, fetchData, limit, searchParams, setPage])
 
     const setLimit = (newLimit: number) => {
         updateURL({ page: 1, limit: newLimit }) // При изменении лимита возвращаемся на первую страницу
