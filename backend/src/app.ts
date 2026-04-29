@@ -7,6 +7,7 @@ import path from 'path'
 import mongoSanitize from 'express-mongo-sanitize'
 import { rateLimit } from 'express-rate-limit'
 import { DB_ADDRESS } from './config'
+import csrfProtection from './middlewares/csrf'
 import errorHandler from './middlewares/error-handler'
 import routes from './routes'
 
@@ -78,6 +79,8 @@ app.use(
         replaceWith: '_',
     })
 )
+
+app.use(csrfProtection)
 
 app.use(
     express.static(path.join(__dirname, 'public'), {

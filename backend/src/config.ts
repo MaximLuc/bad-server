@@ -22,3 +22,17 @@ export const REFRESH_TOKEN = {
         } as CookieOptions,
     },
 }
+
+export const CSRF_TOKEN = {
+    secret: process.env.CSRF_TOKEN_SECRET || ACCESS_TOKEN.secret,
+    cookie: {
+        name: 'csrfToken',
+        options: {
+            httpOnly: true,
+            sameSite: 'strict',
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: ms(process.env.CSRF_TOKEN_EXPIRY || '1h'),
+            path: '/',
+        } as CookieOptions,
+    },
+}
