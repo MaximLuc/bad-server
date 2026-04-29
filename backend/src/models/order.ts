@@ -4,6 +4,7 @@ import validator from 'validator'
 import { PaymentType, phoneRegExp } from '../middlewares/validations'
 import Counter from './counter'
 import User from './user'
+import { sanitizeOrderComment } from '../utils/sanitizeHtml'
 
 export enum StatusType {
     Cancelled = 'cancelled',
@@ -58,6 +59,7 @@ const orderSchema: Schema = new Schema(
         },
         phone: {
             type: String,
+            maxlength: [30, 'Поле "phone" слишком длинное'],
             required: [true, 'Поле "phone" должно быть заполнено'],
             validate: {
                 validator: (v: string) => phoneRegExp.test(v),
@@ -67,6 +69,8 @@ const orderSchema: Schema = new Schema(
         comment: {
             type: String,
             default: '',
+            maxlength: 1000,
+            set: sanitizeOrderComment,
         },
     },
     { versionKey: false, timestamps: true }

@@ -18,6 +18,8 @@ import Select from '../select'
 import styles from './admin.module.scss'
 import { ProductFormValues } from './helpers/types'
 
+const MAX_FILE_SIZE = 2 * 1024 * 1024
+
 export default function AdminNewProduct() {
     const navigate = useNavigate()
     const formRef = useRef<HTMLFormElement>(null)
@@ -40,8 +42,15 @@ export default function AdminNewProduct() {
 
     const handleFileChange = (e: SyntheticEvent<HTMLInputElement>) => {
         if (e.currentTarget.files?.length) {
+            const file = e.currentTarget.files[0]
+
+            if (file.size > MAX_FILE_SIZE) {
+                toast.error('Файл слишком большой')
+                return
+            }
+
             const dataFile = new FormData()
-            dataFile.append('file', e.currentTarget.files[0])
+            dataFile.append('file', file)
 
             uploadImageFile(dataFile)
                 .unwrap()

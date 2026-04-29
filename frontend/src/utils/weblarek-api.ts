@@ -30,9 +30,19 @@ export type ApiListResponse<Type> = {
     items: Type[]
 }
 
+type CsrfTokenResponse = {
+    csrfToken: string
+}
+
+type ApiError = {
+    message?: string
+    statusCode?: number
+}
+
 class Api {
     private readonly baseUrl: string
     protected options: RequestInit
+    private csrfToken: string | null = null
 
     constructor(baseUrl: string, options: RequestInit = {}) {
         this.baseUrl = baseUrl
@@ -53,11 +63,49 @@ class Api {
                   )
     }
 
+    private isUnsafeMethod(method?: string) {
+        return !['GET', 'HEAD', 'OPTIONS'].includes(
+            (method || 'GET').toUpperCase()
+        )
+    }
+
+    private async getCsrfToken(forceRefresh = false) {
+        if (this.csrfToken && !forceRefresh) {
+            return this.csrfToken
+        }
+
+        const response = await fetch(`${this.baseUrl}/auth/csrf-token`, {
+            credentials: 'include',
+        })
+        const data = await this.handleResponse<CsrfTokenResponse>(response)
+
+        this.csrfToken = data.csrfToken
+        return data.csrfToken
+    }
+
+    private async withCsrfToken(options: RequestInit) {
+        if (!this.isUnsafeMethod(options.method)) {
+            return options
+        }
+
+        const csrfToken = await this.getCsrfToken()
+
+        return {
+            ...options,
+            credentials: options.credentials || 'include',
+            headers: {
+                ...((options.headers as object) ?? {}),
+                'X-CSRF-Token': csrfToken,
+            },
+        }
+    }
+
     protected async request<T>(endpoint: string, options: RequestInit) {
         try {
+            const requestOptions = await this.withCsrfToken(options)
             const res = await fetch(`${this.baseUrl}${endpoint}`, {
                 ...this.options,
-                ...options,
+                ...requestOptions,
             })
             return await this.handleResponse<T>(res)
         } catch (error) {
@@ -67,7 +115,7 @@ class Api {
 
     private refreshToken = () => {
         return this.request<UserResponseToken>('/auth/token', {
-            method: 'GET',
+            method: 'POST',
             credentials: 'include',
         })
     }
@@ -79,6 +127,21 @@ class Api {
         try {
             return await this.request<T>(endpoint, options)
         } catch (error) {
+            const apiError = error as ApiError
+
+            if (
+                apiError.statusCode === 403 &&
+                apiError.message === 'Invalid CSRF token'
+            ) {
+                this.csrfToken = null
+                await this.getCsrfToken(true)
+                return this.request<T>(endpoint, options)
+            }
+
+            if (apiError.statusCode !== 401) {
+                return Promise.reject(error)
+            }
+
             const refreshData = await this.refreshToken()
             if (!refreshData.success) {
                 return Promise.reject(refreshData)
@@ -293,7 +356,7 @@ export class WebLarekAPI extends Api implements IWebLarekAPI {
 
     logoutUser = () => {
         return this.request<ServerResponse<unknown>>('/auth/logout', {
-            method: 'GET',
+            method: 'POST',
             credentials: 'include',
         })
     }

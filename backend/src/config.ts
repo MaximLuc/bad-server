@@ -15,9 +15,23 @@ export const REFRESH_TOKEN = {
         name: 'refreshToken',
         options: {
             httpOnly: true,
-            sameSite: 'lax',
-            secure: false,
+            sameSite: 'strict',
+            secure: process.env.NODE_ENV === 'production',
             maxAge: ms(process.env.AUTH_REFRESH_TOKEN_EXPIRY || '7d'),
+            path: '/',
+        } as CookieOptions,
+    },
+}
+
+export const CSRF_TOKEN = {
+    secret: process.env.CSRF_TOKEN_SECRET || ACCESS_TOKEN.secret,
+    cookie: {
+        name: '_csrf',
+        options: {
+            httpOnly: true,
+            sameSite: 'strict',
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: ms(process.env.CSRF_TOKEN_EXPIRY || '1h'),
             path: '/',
         } as CookieOptions,
     },
