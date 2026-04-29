@@ -26,7 +26,7 @@ export const REFRESH_TOKEN = {
 export const CSRF_TOKEN = {
     secret: process.env.CSRF_TOKEN_SECRET || ACCESS_TOKEN.secret,
     cookie: {
-        name: 'csrfToken',
+        name: '_csrf',
         options: {
             httpOnly: true,
             sameSite: 'strict',
